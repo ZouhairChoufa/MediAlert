@@ -3,6 +3,10 @@
 .env.local
 .env.production
 
+# Firebase credentials
+*firebase-adminsdk*.json
+*.json
+
 # Python
 __pycache__/
 *.py[cod]
@@ -70,6 +74,11 @@ instance/
 
 # CrewAI
 report.md
+
+# Sensitive files
+password_hash.py
+set_admin.py
+setup_admin.py
 
 # UV
 .uv/

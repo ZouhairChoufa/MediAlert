@@ -70,8 +70,8 @@
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/ZouhairChoufa/medical-emergency-ai-system.git
-cd medical-emergency-ai-system
+git clone https://github.com/ZouhairChoufa/MediAlert.git
+cd MediAlert
 ```
 
 2. **Install UV package manager**
@@ -209,7 +209,7 @@ Consolidates all data for user interface and generates comprehensive reports.
 ## 📁 Project Structure
 
 ```
-medical-emergency-ai-system/
+MediAlert/
 ├── app.py                          # Main Flask application (upgraded)
 ├── web_app.py                      # Original Flask application
 ├── patient_info_page.py            # Patient information rendering
@@ -288,7 +288,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🆘 Support
 
 - **Documentation**: [API Docs](http://localhost:5000/api-docs)
-- **GitHub Issues**: [Report a bug](https://github.com/ZouhairChoufa/medical-emergency-ai-system/issues)
+- **GitHub Issues**: [Report a bug](https://github.com/ZouhairChoufa/MediAlert/issues)
 - **CrewAI Docs**: [CrewAI Documentation](https://docs.crewai.com)
 - **Discord**: [CrewAI Community](https://discord.com/invite/X4JWnZnxPb)
 
@@ -316,6 +316,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Built with ❤️ for saving lives**
 
-[Website](https://medialert-pro.com) • [Documentation](http://localhost:5000/api-docs) • [GitHub](https://github.com/ZouhairChoufa/medical-emergency-ai-system)
+[Website](https://medialert-pro.com) • [Documentation](http://localhost:5000/api-docs) • [GitHub](https://github.com/ZouhairChoufa/MediAlert)
 
 </div>
