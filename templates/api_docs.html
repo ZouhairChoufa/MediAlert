@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Documentation - MediAlert Pro</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/main.css">
+    <style>
+        .api-section { background: white; padding: 2rem; border-radius: 16px; margin-bottom: 2rem; box-shadow: 0 10px 40px rgba(0,0,0,0.08); }
+        .api-section h2 { color: #6366f1; margin-bottom: 1.5rem; }
+        .endpoint { background: #f1f5f9; padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; border-left: 4px solid #6366f1; }
+        .method { display: inline-block; padding: 0.4rem 0.8rem; border-radius: 6px; font-weight: 700; font-size: 0.85rem; margin-right: 1rem; }
+        .method-post { background: #10b981; color: white; }
+        .method-get { background: #3b82f6; color: white; }
+        .code-block { background: #0f172a; color: #e2e8f0; padding: 1.5rem; border-radius: 8px; overflow-x: auto; font-family: 'Courier New', monospace; font-size: 0.9rem; margin: 1rem 0; }
+        .param-table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+        .param-table th { background: #f1f5f9; padding: 0.8rem; text-align: left; font-weight: 700; }
+        .param-table td { padding: 0.8rem; border-bottom: 1px solid #e2e8f0; }
+        .required { color: #ef4444; font-weight: 700; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-content">
+            <a href="/" class="logo"><i class="fa-solid fa-book-medical"></i> MediAlert Pro</a>
+            <ul class="nav-links">
+                <li><a href="/"><i class="fas fa-home"></i> Dashboard</a></li>
+                <li><a href="/alert"><i class="fas fa-plus-circle"></i> New Alert</a></li>
+                <li><a href="/patient_info"><i class="fas fa-users"></i> Patients</a></li>
+                <li><a href="/medical_reports"><i class="fas fa-file-medical"></i> Reports</a></li>
+                {% if user and user.get('role') == 'admin' %}
+                <li><a href="/admin"><i class="fas fa-cog"></i> Admin</a></li>
+                {% endif %}
+                <li><a href="/profile"><i class="fas fa-user"></i> Profile</a></li>
+                <li><a href="/logout" style="color: #ef4444;"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1 style="color: white; margin-bottom: 2rem; font-size: 2.5rem;"><i class="fa-solid fa-book"></i> API Documentation</h1>
+
+        <div class="api-section">
+            <h2>Overview</h2>
+            <p style="line-height: 1.8; color: #64748b;">
+                The MediAlert Pro API provides programmatic access to our emergency medical dispatch system. 
+                All endpoints return JSON responses and use standard HTTP response codes.
+            </p>
+            <div style="margin-top: 1rem;">
+                <strong>Base URL:</strong> <code style="background: #f1f5f9; padding: 0.3rem 0.6rem; border-radius: 4px;">https://api.medialert-pro.com/v1</code>
+            </div>
+        </div>
+
+        <div class="api-section">
+            <h2>Authentication</h2>
+            <p style="line-height: 1.8; color: #64748b; margin-bottom: 1rem;">
+                All API requests require authentication using an API key in the request header.
+            </p>
+            <div class="code-block">
+Authorization: Bearer YOUR_API_KEY
+Content-Type: application/json</div>
+        </div>
+
+        <div class="api-section">
+            <h2>Endpoints</h2>
+
+            <div class="endpoint">
+                <div style="margin-bottom: 1rem;">
+                    <span class="method method-post">POST</span>
+                    <strong style="font-size: 1.1rem;">/api/alert</strong>
+                </div>
+                <p style="color: #64748b; margin-bottom: 1rem;">Create a new emergency medical alert</p>
+                
+                <h4 style="margin: 1rem 0 0.5rem;">Request Parameters</h4>
+                <table class="param-table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Type</th>
+                            <th>Required</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>symptomes</code></td>
+                            <td>string</td>
+                            <td><span class="required">Yes</span></td>
+                            <td>Patient symptoms description</td>
+                        </tr>
+                        <tr>
+                            <td><code>localisation</code></td>
+                            <td>string</td>
+                            <td><span class="required">Yes</span></td>
+                            <td>Patient location address</td>
+                        </tr>
+                        <tr>
+                            <td><code>nom_prenom</code></td>
+                            <td>string</td>
+                            <td>No</td>
+                            <td>Patient full name</td>
+                        </tr>
+                        <tr>
+                            <td><code>age</code></td>
+                            <td>integer</td>
+                            <td>No</td>
+                            <td>Patient age</td>
+                        </tr>
+                        <tr>
+                            <td><code>sexe</code></td>
+                            <td>string</td>
+                            <td>No</td>
+                            <td>Patient gender (M/F/Other)</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h4 style="margin: 1rem 0 0.5rem;">Example Request</h4>
+                <div class="code-block">{
+  "symptomes": "Severe chest pain, difficulty breathing",
+  "localisation": "123 Main Street, Paris 75001",
+  "nom_prenom": "Jean Dupont",
+  "age": 45,
+  "sexe": "M"
+}</div>
+
+                <h4 style="margin: 1rem 0 0.5rem;">Example Response</h4>
+                <div class="code-block">{
+  "status": "ok",
+  "text": "Alert processed successfully",
+  "alert_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+}</div>
+            </div>
+
+            <div class="endpoint">
+                <div style="margin-bottom: 1rem;">
+                    <span class="method method-get">GET</span>
+                    <strong style="font-size: 1.1rem;">/api/patients</strong>
+                </div>
+                <p style="color: #64748b; margin-bottom: 1rem;">Retrieve list of all patients</p>
+                
+                <h4 style="margin: 1rem 0 0.5rem;">Example Response</h4>
+                <div class="code-block">{
+  "status": "ok",
+  "count": 2,
+  "patients": [
+    {
+      "id": 1,
+      "name": "Jean Dupont",
+      "age": 45,
+      "condition": "Stable",
+      "ambulance": {
+        "id": "AMB-001",
+        "eta": "8 min"
+      },
+      "hospital": {
+        "name": "Hôpital Central",
+        "service": "Urgences"
+      }
+    }
+  ]
+}</div>
+            </div>
+
+            <div class="endpoint">
+                <div style="margin-bottom: 1rem;">
+                    <span class="method method-get">GET</span>
+                    <strong style="font-size: 1.1rem;">/api/patient/{id}</strong>
+                </div>
+                <p style="color: #64748b; margin-bottom: 1rem;">Retrieve detailed information for a specific patient</p>
+                
+                <h4 style="margin: 1rem 0 0.5rem;">URL Parameters</h4>
+                <table class="param-table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>id</code></td>
+                            <td>integer</td>
+                            <td>Patient ID</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="endpoint">
+                <div style="margin-bottom: 1rem;">
+                    <span class="method method-get">GET</span>
+                    <strong style="font-size: 1.1rem;">/api/ambulances</strong>
+                </div>
+                <p style="color: #64748b; margin-bottom: 1rem;">Get real-time status of all ambulances in the fleet</p>
+            </div>
+
+            <div class="endpoint">
+                <div style="margin-bottom: 1rem;">
+                    <span class="method method-get">GET</span>
+                    <strong style="font-size: 1.1rem;">/api/hospitals</strong>
+                </div>
+                <p style="color: #64748b; margin-bottom: 1rem;">Get list of hospitals with bed availability</p>
+            </div>
+        </div>
+
+        <div class="api-section">
+            <h2>Response Codes</h2>
+            <table class="param-table">
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>200</strong></td>
+                        <td>Success</td>
+                    </tr>
+                    <tr>
+                        <td><strong>400</strong></td>
+                        <td>Bad Request - Invalid parameters</td>
+                    </tr>
+                    <tr>
+                        <td><strong>401</strong></td>
+                        <td>Unauthorized - Invalid API key</td>
+                    </tr>
+                    <tr>
+                        <td><strong>404</strong></td>
+                        <td>Not Found - Resource doesn't exist</td>
+                    </tr>
+                    <tr>
+                        <td><strong>500</strong></td>
+                        <td>Internal Server Error</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="api-section">
+            <h2>Rate Limiting</h2>
+            <p style="line-height: 1.8; color: #64748b;">
+                API requests are limited to <strong>1000 requests per hour</strong> per API key. 
+                Rate limit information is included in response headers.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

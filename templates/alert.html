@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Alert - MediAlert Pro</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/main.css">
+    <style>
+        .alert-container {
+            max-width: 700px;
+            margin: 2rem auto;
+            background: white;
+            padding: 3rem;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        }
+        .alert-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .alert-header h1 {
+            font-size: 2.5rem;
+            color: #0f172a;
+            margin-bottom: 0.5rem;
+        }
+        .alert-header p {
+            color: #64748b;
+            font-size: 1.1rem;
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        .form-group label {
+            display: block;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 0.9rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-family: inherit;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        .required {
+            color: #ef4444;
+        }
+        .btn-submit {
+            width: 100%;
+            padding: 1.2rem;
+            background: linear-gradient(135deg, #6366f1, #7c3aed);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            margin-top: 1rem;
+        }
+        .btn-submit:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4);
+        }
+        .btn-submit:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .response-card {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            border-radius: 12px;
+            display: none;
+            animation: slideIn 0.3s ease-out;
+        }
+        .response-card.show {
+            display: block;
+        }
+        .response-card.success {
+            background: #d1fae5;
+            border-left: 5px solid #10b981;
+        }
+        .response-card.error {
+            background: #fee2e2;
+            border-left: 5px solid #ef4444;
+        }
+        .response-title {
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+        .response-card.success .response-title {
+            color: #065f46;
+        }
+        .response-card.error .response-title {
+            color: #991b1b;
+        }
+        .response-text {
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+        .response-card.success .response-text {
+            color: #047857;
+        }
+        .response-card.error .response-text {
+            color: #b91c1c;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        @media (max-width: 600px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-content">
+            <a href="/" class="logo"><i class="fa-solid fa-book-medical"></i> MediAlert Pro</a>
+            <ul class="nav-links">
+                <li><a href="/"><i class="fas fa-home"></i> Dashboard</a></li>
+                <li><a href="/alert"><i class="fas fa-plus-circle"></i> New Alert</a></li>
+                <li><a href="/patient_info"><i class="fas fa-users"></i> Patients</a></li>
+                <li><a href="/medical_reports"><i class="fas fa-file-medical"></i> Reports</a></li>
+                {% if user and user.get('role') == 'admin' %}
+                <li><a href="/admin"><i class="fas fa-cog"></i> Admin</a></li>
+                {% endif %}
+                <li><a href="/profile"><i class="fas fa-user"></i> Profile</a></li>
+                <li><a href="/logout" style="color: #ef4444;"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="alert-container">
+            <div class="alert-header">
+                <h1><i class="fa-solid fa-triangle-exclamation"></i> Emergency Alert</h1>
+                <p>Fill in the details to dispatch emergency services</p>
+            </div>
+
+            <form id="alertForm">
+                <div class="form-group">
+                    <label for="symptomes">Symptoms <span class="required">*</span></label>
+                    <textarea id="symptomes" name="symptomes" placeholder="Describe the patient's symptoms in detail..." required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="localisation">Location <span class="required">*</span></label>
+                    <input type="text" id="localisation" name="localisation" placeholder="Full address of the emergency location" required />
+                </div>
+
+                <div class="form-group">
+                    <label for="nom_prenom">Patient Name</label>
+                    <input type="text" id="nom_prenom" name="nom_prenom" placeholder="Full name (optional)" />
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="age">Age</label>
+                        <input type="number" id="age" name="age" placeholder="Years" min="0" max="120" />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="sexe">Gender</label>
+                        <select id="sexe" name="sexe">
+                            <option value="">Select...</option>
+                            <option value="M">Male</option>
+                            <option value="F">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-submit" id="submitBtn">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Send Emergency Alert
+                </button>
+            </form>
+
+            <div id="responseCard" class="response-card">
+                <div class="response-title" id="responseTitle"></div>
+                <div class="response-text" id="responseText"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('alertForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const responseCard = document.getElementById('responseCard');
+        const responseTitle = document.getElementById('responseTitle');
+        const responseText = document.getElementById('responseText');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            responseCard.className = 'response-card show';
+            responseCard.classList.remove('success', 'error');
+            responseTitle.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+            responseText.textContent = 'Dispatching emergency services and coordinating response...';
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+
+            const formData = new FormData(form);
+            const body = Object.fromEntries(formData.entries());
+
+            try {
+                const res = await fetch('/api/alert', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+
+                const data = await res.json();
+
+                if (data.status === 'ok') {
+                    responseCard.classList.add('success');
+                    responseTitle.textContent = '✓ Alert Created Successfully';
+                    responseText.innerHTML = `Emergency services have been dispatched. Patient ID: <strong>#${data.patient_id}</strong><br><br>Redirecting to patient information...`;
+                    
+                    setTimeout(() => {
+                        window.location.href = '/patient_info';
+                    }, 2000);
+                } else {
+                    responseCard.classList.add('error');
+                    responseTitle.textContent = '✕ Error';
+                    responseText.textContent = data.message || 'Failed to create alert. Please try again.';
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '<i class="fa-solid fa-triangle-exclamation"></i> Send Emergency Alert';
+                }
+            } catch (err) {
+                responseCard.classList.add('error');
+                responseTitle.textContent = '✕ Connection Error';
+                responseText.textContent = 'Unable to connect to server: ' + err.message;
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Send Emergency Alert';
+            }
+        });
+    </script>
+</body>
+</html>

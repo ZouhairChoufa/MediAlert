@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediAlert Pro - Emergency Medical System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/main.css">
+    <style>
+        .hero {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.95), rgba(124, 58, 237, 0.95));
+            color: white;
+            padding: 4rem 2rem;
+            text-align: center;
+            border-radius: 20px;
+            margin-bottom: 3rem;
+        }
+        .hero h1 {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            font-weight: 900;
+        }
+        .hero p {
+            font-size: 1.3rem;
+            opacity: 0.95;
+            max-width: 700px;
+            margin: 0 auto 2rem;
+        }
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin: 3rem 0;
+        }
+        .feature-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+            text-align: center;
+            transition: transform 0.3s;
+        }
+        .feature-card:hover {
+            transform: translateY(-10px);
+        }
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        .feature-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: #0f172a;
+        }
+        .feature-desc {
+            color: #64748b;
+            line-height: 1.6;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            margin: 3rem 0;
+        }
+        .stat-box {
+            background: linear-gradient(135deg, #6366f1, #7c3aed);
+            color: white;
+            padding: 2rem;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3);
+        }
+        .stat-number {
+            font-size: 3rem;
+            font-weight: 900;
+            margin-bottom: 0.5rem;
+        }
+        .stat-label {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+        .cta-section {
+            background: white;
+            padding: 3rem;
+            border-radius: 20px;
+            text-align: center;
+            margin: 3rem 0;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+        }
+        .cta-section h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: #0f172a;
+        }
+        .cta-section p {
+            font-size: 1.2rem;
+            color: #64748b;
+            margin-bottom: 2rem;
+        }
+        .btn-large {
+            padding: 1.2rem 3rem;
+            font-size: 1.2rem;
+            border-radius: 12px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-content">
+            <a href="/" class="logo"><i class="fa-solid fa-book-medical"></i> MediAlert Pro</a>
+            <ul class="nav-links">
+                <li><a href="/"><i class="fas fa-home"></i> Dashboard</a></li>
+                <li><a href="/alert"><i class="fas fa-plus-circle"></i> New Alert</a></li>
+                <li><a href="/patient_info"><i class="fas fa-users"></i> Patients</a></li>
+                <li><a href="/medical_reports"><i class="fas fa-file-medical"></i> Reports</a></li>
+                {% if user and user.get('role') == 'admin' %}
+                <li><a href="/admin"><i class="fas fa-cog"></i> Admin</a></li>
+                {% endif %}
+                <li><a href="/profile"><i class="fas fa-user"></i> Profile</a></li>
+                <li><a href="/logout" style="color: #ef4444;"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="hero">
+            <h1><i class="fa-solid fa-truck-medical"></i> MediAlert Pro</h1>
+            <p>AI-Powered Emergency Medical Dispatch System - Saving Lives Through Intelligent Coordination</p>
+            <a href="/alert" class="btn btn-primary btn-large"><i class="fa-solid fa-truck-medical"></i> Create Emergency Alert</a>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="stat-number">{{ total_patients }}</div>
+                <div class="stat-label">Total Patients</div>
+            </div>
+            <div class="stat-box" style="background: linear-gradient(135deg, #10b981, #059669);">
+                <div class="stat-number">{{ active_alerts }}</div>
+                <div class="stat-label">Active Alerts</div>
+            </div>
+            <div class="stat-box" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                <div class="stat-number">{{ ambulances_dispatched }}</div>
+                <div class="stat-label">Ambulances Dispatched</div>
+            </div>
+            <div class="stat-box" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+                <div class="stat-number">{{ avg_response_time }}</div>
+                <div class="stat-label">Avg Response (min)</div>
+            </div>
+        </div>
+
+        <div class="features">
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fa-solid fa-robot"></i></div>
+                <div class="feature-title">AI-Powered Triage</div>
+                <div class="feature-desc">Advanced AI agents analyze symptoms and prioritize cases automatically</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fa-solid fa-truck-medical"></i></div>
+                <div class="feature-title">Smart Dispatch</div>
+                <div class="feature-desc">Intelligent ambulance routing based on location and availability</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fa-solid fa-hospital"></i></div>
+                <div class="feature-title">Hospital Coordination</div>
+                <div class="feature-desc">Real-time bed availability and specialist matching</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fa-solid fa-user-doctor"></i></div>
+                <div class="feature-title">Medical Expertise</div>
+                <div class="feature-desc">Instant access to emergency physicians and specialists</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fa-solid fa-chart-bar"></i></div>
+                <div class="feature-title">Comprehensive Reports</div>
+                <div class="feature-desc">Detailed medical reports and treatment documentation</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fa-solid fa-bolt"></i></div>
+                <div class="feature-title">Real-Time Tracking</div>
+                <div class="feature-desc">Live updates on patient status and ambulance location</div>
+            </div>
+        </div>
+
+        <div class="cta-section">
+            <h2>Ready to Save Lives?</h2>
+            <p>Join the future of emergency medical response with our AI-powered system</p>
+            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                <a href="/alert" class="btn btn-primary btn-large">Create Alert</a>
+                <a href="/api-docs" class="btn btn-secondary btn-large">View API Docs</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

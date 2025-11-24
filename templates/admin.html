@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - MediAlert Pro</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/main.css">
+    <style>
+        .admin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 2rem; margin: 2rem 0; }
+        .admin-card { background: white; padding: 2rem; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.08); }
+        .admin-card h3 { color: #6366f1; margin-bottom: 1.5rem; font-size: 1.5rem; }
+        .table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        .table th { background: #f1f5f9; padding: 1rem; text-align: left; font-weight: 700; color: #0f172a; }
+        .table td { padding: 1rem; border-bottom: 1px solid #e2e8f0; }
+        .badge { padding: 0.4rem 0.8rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
+        .badge-success { background: #d1fae5; color: #065f46; }
+        .badge-warning { background: #fef3c7; color: #92400e; }
+        .badge-danger { background: #fee2e2; color: #991b1b; }
+        .status-indicator { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+        .status-active { background: #10b981; }
+        .status-pending { background: #f59e0b; }
+        .status-offline { background: #ef4444; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-content">
+            <a href="/" class="logo"><i class="fa-solid fa-book-medical"></i> MediAlert Pro</a>
+            <ul class="nav-links">
+                <li><a href="/"><i class="fas fa-home"></i> Dashboard</a></li>
+                <li><a href="/alert"><i class="fas fa-plus-circle"></i> New Alert</a></li>
+                <li><a href="/patient_info"><i class="fas fa-users"></i> Patients</a></li>
+                <li><a href="/medical_reports"><i class="fas fa-file-medical"></i> Reports</a></li>
+                <li><a href="/admin"><i class="fas fa-cog"></i> Admin</a></li>
+                <li><a href="/profile"><i class="fas fa-user"></i> Profile</a></li>
+                <li><a href="/logout" style="color: #ef4444;"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1 style="color: white; margin-bottom: 2rem; font-size: 2.5rem;"><i class="fa-solid fa-gear"></i> Admin Panel</h1>
+
+        <div class="admin-grid">
+            <div class="admin-card">
+                <h3><i class="fa-solid fa-truck-medical"></i> Ambulance Fleet Status</h3>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Status</th>
+                            <th>Location</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for amb in ambulances %}
+                        <tr>
+                            <td><strong>{{ amb.id }}</strong></td>
+                            <td>
+                                <span class="status-indicator status-{{ amb.status }}"></span>
+                                {{ amb.status_text }}
+                            </td>
+                            <td>{{ amb.location }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="admin-card">
+                <h3><i class="fa-solid fa-hospital"></i> Hospital Network</h3>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Hospital</th>
+                            <th>Beds Available</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for hosp in hospitals %}
+                        <tr>
+                            <td><strong>{{ hosp.name }}</strong></td>
+                            <td>{{ hosp.beds_available }}</td>
+                            <td><span class="badge badge-{{ hosp.status_class }}">{{ hosp.status }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="admin-card">
+                <h3><i class="fa-solid fa-chart-bar"></i> System Metrics</h3>
+                <div style="display: grid; gap: 1rem;">
+                    <div style="padding: 1rem; background: #f1f5f9; border-radius: 8px;">
+                        <div style="color: #64748b; font-size: 0.9rem;">Total Alerts Today</div>
+                        <div style="font-size: 2rem; font-weight: 800; color: #6366f1;">{{ metrics.alerts_today }}</div>
+                    </div>
+                    <div style="padding: 1rem; background: #f1f5f9; border-radius: 8px;">
+                        <div style="color: #64748b; font-size: 0.9rem;">Average Response Time</div>
+                        <div style="font-size: 2rem; font-weight: 800; color: #10b981;">{{ metrics.avg_response }}m</div>
+                    </div>
+                    <div style="padding: 1rem; background: #f1f5f9; border-radius: 8px;">
+                        <div style="color: #64748b; font-size: 0.9rem;">System Uptime</div>
+                        <div style="font-size: 2rem; font-weight: 800; color: #f59e0b;">{{ metrics.uptime }}%</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="admin-card">
+                <h3><i class="fa-solid fa-user-doctor"></i> Medical Staff On-Duty</h3>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Specialty</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for staff in medical_staff %}
+                        <tr>
+                            <td><strong>{{ staff.name }}</strong></td>
+                            <td>{{ staff.specialty }}</td>
+                            <td><span class="badge badge-{{ staff.status_class }}">{{ staff.status }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="admin-card" style="margin-top: 2rem;">
+            <h3><i class="fa-solid fa-bell"></i> Recent Activity Log</h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Event</th>
+                        <th>Details</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in activity_logs %}
+                    <tr>
+                        <td>{{ log.time }}</td>
+                        <td><strong>{{ log.event }}</strong></td>
+                        <td>{{ log.details }}</td>
+                        <td><span class="badge badge-{{ log.status_class }}">{{ log.status }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

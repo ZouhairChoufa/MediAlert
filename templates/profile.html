@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - MediAlert Pro</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/main.css">
+    <style>
+        .profile-container { max-width: 1200px; margin: 2rem auto; padding: 2rem; }
+        .profile-header { background: white; padding: 2rem; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.08); margin-bottom: 2rem; }
+        .profile-top { display: flex; align-items: center; gap: 2rem; margin-bottom: 1.5rem; }
+        .profile-avatar { width: 100px; height: 100px; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #7c3aed); display: flex; align-items: center; justify-content: center; font-size: 3rem; color: white; }
+        .profile-info h1 { font-size: 2rem; color: #0f172a; margin-bottom: 0.5rem; }
+        .profile-info p { color: #64748b; margin: 0.3rem 0; }
+        .role-badge { display: inline-block; padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; margin-top: 0.5rem; }
+        .role-admin { background: #fef3c7; color: #92400e; }
+        .role-user { background: #dbeafe; color: #1e40af; }
+        .edit-form { display: none; padding: 1.5rem; background: #f8fafc; border-radius: 12px; margin-top: 1rem; }
+        .edit-form.active { display: block; }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; font-weight: 600; color: #0f172a; margin-bottom: 0.5rem; font-size: 0.9rem; }
+        .form-group input { width: 100%; padding: 0.8rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1rem; }
+        .form-group input:focus { outline: none; border-color: #6366f1; }
+        .btn { padding: 0.8rem 1.5rem; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; transition: transform 0.3s; }
+        .btn:hover { transform: translateY(-2px); }
+        .btn-primary { background: linear-gradient(135deg, #6366f1, #7c3aed); color: white; }
+        .btn-secondary { background: #e2e8f0; color: #0f172a; }
+        .btn-edit { background: #6366f1; color: white; text-decoration: none; display: inline-block; }
+        .alert { padding: 1rem; border-radius: 8px; margin-bottom: 1rem; display: none; }
+        .alert.show { display: block; }
+        .alert-success { background: #d1fae5; color: #065f46; }
+        .alert-error { background: #fee2e2; color: #991b1b; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .stat-card { background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.08); text-align: center; }
+        .stat-card i { font-size: 2.5rem; color: #6366f1; margin-bottom: 1rem; }
+        .stat-number { font-size: 2.5rem; font-weight: 800; color: #0f172a; }
+        .stat-label { color: #64748b; font-size: 0.9rem; margin-top: 0.5rem; }
+        .alerts-section { background: white; padding: 2rem; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.08); }
+        .alerts-section h2 { color: #0f172a; margin-bottom: 1.5rem; }
+        .alert-item { padding: 1rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+        .alert-item:last-child { border-bottom: none; }
+        .alert-info { flex: 1; }
+        .alert-date { color: #64748b; font-size: 0.85rem; }
+        .alert-symptoms { color: #0f172a; font-weight: 600; margin: 0.5rem 0; }
+        .alert-status { padding: 0.4rem 0.8rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
+        .status-completed { background: #d1fae5; color: #065f46; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-content">
+            <a href="/" class="logo"><i class="fa-solid fa-book-medical"></i> MediAlert Pro</a>
+            <ul class="nav-links">
+                <li><a href="/"><i class="fas fa-home"></i> Dashboard</a></li>
+                <li><a href="/alert"><i class="fas fa-plus-circle"></i> New Alert</a></li>
+                <li><a href="/patient_info"><i class="fas fa-users"></i> Patients</a></li>
+                <li><a href="/medical_reports"><i class="fas fa-file-medical"></i> Reports</a></li>
+                {% if user and user.get('role') == 'admin' %}
+                <li><a href="/admin"><i class="fas fa-cog"></i> Admin</a></li>
+                {% endif %}
+                <li><a href="/profile"><i class="fas fa-user"></i> Profile</a></li>
+                <li><a href="/logout" style="color: #ef4444;"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="profile-container">
+        <div class="profile-header">
+            <div class="profile-top">
+                <div class="profile-avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="profile-info">
+                    <h1 id="display-name">{{ profile.display_name }}</h1>
+                    <p><i class="fas fa-envelope"></i> <span id="display-email">{{ profile.email }}</span></p>
+                    <p><i class="fas fa-calendar"></i> Member since {{ profile.created_at.strftime('%B %Y') if profile.created_at else 'Recently' }}</p>
+                    <span class="role-badge role-{{ profile.get('role', 'user') }}">
+                        <i class="fas fa-shield-alt"></i> {{ profile.get('role', 'user') }}
+                    </span>
+                </div>
+            </div>
+
+            <div id="alert-message" class="alert"></div>
+
+            <button class="btn btn-edit" onclick="toggleEdit()">
+                <i class="fas fa-edit"></i> Edit Profile
+            </button>
+
+            <div id="edit-form" class="edit-form">
+                <form onsubmit="updateProfile(event)">
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" id="edit-name" value="{{ profile.display_name }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="edit-email" value="{{ profile.email }}" required>
+                    </div>
+                    <div style="display: flex; gap: 1rem;">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="toggleEdit()">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <i class="fas fa-bell"></i>
+                <div class="stat-number">{{ profile.total_alerts or 0 }}</div>
+                <div class="stat-label">Total Alerts</div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-ambulance"></i>
+                <div class="stat-number">{{ alerts|length }}</div>
+                <div class="stat-label">Recent Alerts</div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-check-circle"></i>
+                <div class="stat-number">{{ alerts|length }}</div>
+                <div class="stat-label">Completed</div>
+            </div>
+        </div>
+
+        <div class="alerts-section">
+            <h2><i class="fas fa-history"></i> Alert History</h2>
+            {% if alerts %}
+                {% for alert in alerts[:10] %}
+                <div class="alert-item">
+                    <div class="alert-info">
+                        <div class="alert-date">{{ alert.timestamp if alert.timestamp else 'Recent' }}</div>
+                        <div class="alert-symptoms">{{ alert.symptomes }}</div>
+                        <div style="color: #64748b; font-size: 0.9rem;">
+                            <i class="fas fa-map-marker-alt"></i> {{ alert.localisation }}
+                        </div>
+                    </div>
+                    <span class="alert-status status-completed">
+                        <i class="fas fa-check"></i> Completed
+                    </span>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p style="text-align: center; color: #64748b; padding: 2rem;">
+                    <i class="fas fa-inbox"></i><br>
+                    No alerts yet. Create your first emergency alert!
+                </p>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        function toggleEdit() {
+            const form = document.getElementById('edit-form');
+            form.classList.toggle('active');
+        }
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert-message');
+            alert.textContent = message;
+            alert.className = `alert show alert-${type}`;
+            setTimeout(() => alert.classList.remove('show'), 3000);
+        }
+
+        async function updateProfile(e) {
+            e.preventDefault();
+            const name = document.getElementById('edit-name').value;
+            const email = document.getElementById('edit-email').value;
+
+            try {
+                const res = await fetch('/api/update-profile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email })
+                });
+
+                const data = await res.json();
+
+                if (data.status === 'ok') {
+                    document.getElementById('display-name').textContent = name;
+                    document.getElementById('display-email').textContent = email;
+                    showAlert('Profile updated successfully!', 'success');
+                    toggleEdit();
+                } else {
+                    showAlert(data.message || 'Update failed', 'error');
+                }
+            } catch (err) {
+                showAlert('Connection error: ' + err.message, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

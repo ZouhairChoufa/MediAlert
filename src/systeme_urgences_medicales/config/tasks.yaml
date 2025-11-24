@@ -3,61 +3,175 @@ creer_l_alerte:
   description: 'Générer une alerte d''urgence pour un patient du nom et prénom: {nom_prenom},
     âge:{age}, et le sexe:{sexe} avec les symptômes suivants : {symptomes} et localisé
     à : {localisation} et avec le niveau d''urgence :{nv_urgence}'
-  expected_output: 'Une alerte d''urgence médicale structurée avec les informations
-    complètes du patient: identité, âge, sexe, symptômes détaillés, localisation précise
-    et niveau d''urgence évalué'
+  expected_output: |
+    JSON structuré strictement conforme au schéma suivant:
+    {
+      "alert_id": "string (UUID)",
+      "timestamp": "ISO8601 datetime",
+      "patient": {
+        "nom_prenom": "string",
+        "age": "integer",
+        "sexe": "M|F|Autre"
+      },
+      "medical_info": {
+        "symptomes": "string (description détaillée)",
+        "niveau_urgence": "CRITIQUE|URGENT|MODERE|STABLE",
+        "score_urgence": "integer (1-5)"
+      },
+      "localisation": {
+        "adresse": "string",
+        "coordonnees": {"lat": "float", "lng": "float"},
+        "details_acces": "string"
+      },
+      "statut": "CREATED"
+    }
   agent: agentpatient
 triage_patients_et_selection_ambulance:
   description: Analyser toutes les alertes actives et les trier selon 1) le niveau
-    d’urgence médicale, 2) la distance ambulance–patient, 3) la disponibilité ambulance,
-    puis recommander l’ambulance optimale pour chaque patient en tenant compte des
+    d'urgence médicale, 2) la distance ambulance–patient, 3) la disponibilité ambulance,
+    puis recommander l'ambulance optimale pour chaque patient en tenant compte des
     conflits et des priorités. En cas de réceptions simultanées de plusieurs alertes,
-    appliquer une priorisation stricte par niveau d’urgence (du plus critique au moins
-    urgent) avant toute autre règle; en cas d’égalité, départager par ETA minimale
-    puis par charge opérationnelle de l’ambulance. Pour chaque patient trié, récupérer
+    appliquer une priorisation stricte par niveau d'urgence (du plus critique au moins
+    urgent) avant toute autre règle; en cas d'égalité, départager par ETA minimale
+    puis par charge opérationnelle de l'ambulance. Pour chaque patient trié, récupérer
     et transmettre également la liste des hôpitaux disposant de lits disponibles,
     avec le service pertinent (ex. cardio, neuro, trauma) et la charge actuelle
-  expected_output: "Pour chaque patient, produire un objet structuré contenant: priorité,
-    ambulance recommandée (avec ETA), justification de la recommandation, et la liste
-    des hôpitaux actuellement disponibles (id, nom, distance/ETA, spécialité/plateau
-    technique pertinent, lits libres, taux d’occupation).\uFEFF\nGuardrail recommandé\n[Assurer
-    que la sortie est un JSON valide sous la forme {\"patients\":...\uFEFF} et que
-    chaque patient contient id_patient, priorite, ambulance_id, eta_minutes, justification,
-    hopitaux_disponibles (liste non vide).]"
+  expected_output: |
+    JSON structuré strictement conforme au schéma suivant:
+    {
+      "triage_timestamp": "ISO8601 datetime",
+      "patients": [
+        {
+          "alert_id": "string (UUID)",
+          "patient_nom": "string",
+          "priorite": "integer (1=plus urgent, 5=moins urgent)",
+          "niveau_urgence": "CRITIQUE|URGENT|MODERE|STABLE",
+          "ambulance_assignee": {
+            "ambulance_id": "string",
+            "nom": "string (ex: SAMU-75-A12)",
+            "type": "SMUR|Ambulance|VSL",
+            "equipement": ["string"],
+            "eta_minutes": "integer",
+            "distance_km": "float"
+          },
+          "justification": "string (raison de l'assignation)",
+          "hopitaux_disponibles": [
+            {
+              "hopital_id": "string",
+              "nom": "string",
+              "distance_km": "float",
+              "eta_minutes": "integer",
+              "specialite": "string (Cardio|Neuro|Trauma|Urgences générales)",
+              "lits_disponibles": "integer",
+              "taux_occupation": "float (0-100)",
+              "plateau_technique": ["string"]
+            }
+          ],
+          "statut": "TRIAGED"
+        }
+      ]
+    }
   agent: agentcordonnateur
   context:
   - creer_l_alerte
 valider_la_demande_du_coordonnateur:
-  description: "Après réception de la localisation du patient et de l’hôpital cible
-    validées par le coordonnateur, confirmer la disponibilité de l’équipage, calculer
-    l’itinéraire optimal, estimer l’ETA (aller et retour si requis) et déclencher
-    le départ. Synchroniser en temps réel l’ETA avec l’hôpital. En cas d’indisponibilité
-    ou d’incident (trafic, panne, patient déjà pris en charge), proposer automatiquement
+  description: "Après réception de la localisation du patient et de l'hôpital cible
+    validées par le coordonnateur, confirmer la disponibilité de l'équipage, calculer
+    l'itinéraire optimal, estimer l'ETA (aller et retour si requis) et déclencher
+    le départ. Synchroniser en temps réel l'ETA avec l'hôpital. En cas d'indisponibilité
+    ou d'incident (trafic, panne, patient déjà pris en charge), proposer automatiquement
     une ambulance ou un itinéraire alternatif et notifier le coordonnateur ainsi que
-    l’hôpital.\uFEFF"
-  expected_output: "Confirmation du transport incluant l’hôpital sélectionné, l’ambulance
-    affectée, l’itinéraire choisi, l’ETA estimée, l’heure de départ et l’état de synchronisation
-    des données transmises à l’hôpital de destination. En cas d’échec, fournir le
-    motif détaillé et une recommandation alternative.\nGuardrail\nAssurer que la sortie
-    est un JSON valide et que les champs obligatoires suivants sont présents: id_patient,
-    ambulance_id, hopital_id, eta_minutes, depart_heure_iso, itineraire_polyline (ou
-    waypoints), statut (\"confirme\"|\"echec\"), message.\uFEFF"
+    l'hôpital."
+  expected_output: |
+    JSON structuré strictement conforme au schéma suivant:
+    {
+      "transport_id": "string (UUID)",
+      "alert_id": "string (UUID)",
+      "statut": "CONFIRMED|FAILED|REROUTED",
+      "ambulance": {
+        "ambulance_id": "string",
+        "nom": "string (ex: SAMU-75-A12)",
+        "type": "SMUR|Ambulance|VSL",
+        "equipage": {
+          "medecin": "boolean",
+          "infirmier": "boolean",
+          "ambulanciers": "integer"
+        }
+      },
+      "hopital_destination": {
+        "hopital_id": "string",
+        "nom": "string",
+        "adresse": "string",
+        "service_accueil": "string"
+      },
+      "itineraire": {
+        "distance_km": "float",
+        "eta_minutes": "integer",
+        "polyline": "string (encoded polyline)",
+        "waypoints": [{"lat": "float", "lng": "float"}]
+      },
+      "timing": {
+        "heure_depart": "ISO8601 datetime",
+        "heure_arrivee_patient_estimee": "ISO8601 datetime",
+        "heure_arrivee_hopital_estimee": "ISO8601 datetime"
+      },
+      "synchronisation": {
+        "hopital_notifie": "boolean",
+        "timestamp_notification": "ISO8601 datetime"
+      },
+      "message": "string (détails ou raison d'échec)",
+      "alternative": {
+        "ambulance_id": "string (si rerouting)",
+        "hopital_id": "string (si rerouting)"
+      }
+    }
   agent: agentambulence
   context:
   - triage_patients_et_selection_ambulance
 recevoir_les_patients:
   description: "Recevoir la demande de transfert en tenant compte que le lit est déjà
-    garanti par le coordonnateur. Préparer l’équipe d’accueil (urgentiste, spécialité,
-    imagerie) et les ressources nécessaires, confirmer l’heure d’arrivée prévue, et
-    maintenir la disponibilité du lit jusqu’à l’admission. En cas d’imprévu local
+    garanti par le coordonnateur. Préparer l'équipe d'accueil (urgentiste, spécialité,
+    imagerie) et les ressources nécessaires, confirmer l'heure d'arrivée prévue, et
+    maintenir la disponibilité du lit jusqu'à l'admission. En cas d'imprévu local
     (ex. blocage technique), alerter immédiatement le coordonnateur pour réacheminer
-    si besoin.\uFEFF"
-  expected_output: "Confirmation d’admission avec lit garanti, équipe mobilisée, ressources
-    préparées, heure d’arrivée prévue, et message de synchronisation; ou alerte d’imprévu
-    avec recommandation de réacheminement.\uFEFF\n\nGuardrail (hôpital)\n[Sortie JSON
-    valide contenant obligatoirement: id_patient, hopital_id, statut (\"pret\"), lit_id,
-    service, heure_arrivee_prevue_iso, equipe, ressources[], message. En cas d’imprévu:
-    statut=\"imprevu\", raison, action_recommandee.]"
+    si besoin."
+  expected_output: |
+    JSON structuré strictement conforme au schéma suivant:
+    {
+      "admission_id": "string (UUID)",
+      "alert_id": "string (UUID)",
+      "transport_id": "string (UUID)",
+      "hopital": {
+        "hopital_id": "string",
+        "nom": "string",
+        "service": "string"
+      },
+      "statut": "READY|INCIDENT|REROUTE_REQUIRED",
+      "lit": {
+        "lit_id": "string",
+        "chambre": "string",
+        "type": "Urgences|Réanimation|Soins intensifs|Standard"
+      },
+      "equipe_mobilisee": {
+        "urgentiste": "string (nom ou ID)",
+        "specialiste": "string (spécialité si requis)",
+        "infirmiers": "integer",
+        "autres": ["string"]
+      },
+      "ressources_preparees": [
+        "string (ex: Salle de déchocage, Scanner, Bloc opératoire)"
+      ],
+      "timing": {
+        "heure_arrivee_prevue": "ISO8601 datetime",
+        "heure_preparation": "ISO8601 datetime"
+      },
+      "message": "string",
+      "incident": {
+        "raison": "string (si statut=INCIDENT)",
+        "action_recommandee": "string (si rerouting nécessaire)",
+        "hopital_alternatif_id": "string (optionnel)"
+      }
+    }
   agent: agenthopital
   context:
   - valider_la_demande_du_coordonnateur
@@ -66,10 +180,56 @@ analyse_medicale_d_urgence:
     afin d'évaluer l'état du patient, formuler rapidement un diagnostic différentiel,
     identifier les priorités thérapeutiques et proposer les premières étapes de prise
     en charge adaptées à la gravité et à la pathologie suspectée
-  expected_output: Synthèse structurée du dossier médical reçu, diagnostic différentiel
-    listé clairement, priorités de prise en charge d'urgence, protocoles ou recommandations
-    de traitements immédiats, conseils supplémentaires à destination des équipes d'urgence
-    ou du médecin demandeur
+  expected_output: |
+    JSON structuré strictement conforme au schéma suivant:
+    {
+      "analyse_id": "string (UUID)",
+      "alert_id": "string (UUID)",
+      "admission_id": "string (UUID)",
+      "timestamp": "ISO8601 datetime",
+      "medecin_urgentiste": {
+        "nom": "string",
+        "specialite": "Médecine d'urgence"
+      },
+      "synthese_dossier": {
+        "antecedents": "string",
+        "symptomes_principaux": ["string"],
+        "signes_vitaux": {
+          "tension": "string",
+          "frequence_cardiaque": "integer",
+          "saturation_o2": "integer",
+          "temperature": "float"
+        }
+      },
+      "diagnostic_differentiel": [
+        {
+          "pathologie": "string",
+          "probabilite": "HAUTE|MOYENNE|FAIBLE",
+          "arguments": "string"
+        }
+      ],
+      "priorites_prise_en_charge": [
+        {
+          "ordre": "integer",
+          "action": "string",
+          "urgence": "IMMEDIATE|RAPIDE|DIFFEREE"
+        }
+      ],
+      "protocoles_recommandes": [
+        {
+          "protocole": "string",
+          "description": "string",
+          "medicaments": ["string"],
+          "examens": ["string"]
+        }
+      ],
+      "orientation": {
+        "specialiste_requis": "boolean",
+        "specialite": "string (si requis)",
+        "urgence_consultation": "IMMEDIATE|DANS_LES_HEURES|PROGRAMMEE"
+      },
+      "conseils_equipe": "string"
+    }
   agent: agentmedecinurgence
   context:
   - recevoir_les_patients
@@ -78,10 +238,120 @@ traitement_du_specialiste:
     indiqué par le spécialiste à la suite de l'analyse du dossier. Assurer la communication
     avec l'équipe de soins, ajuster les prescriptions si nécessaire et surveiller
     l'évolution du patient selon les protocoles spécifiques
-  expected_output: Plan de traitement détaillé adapté à la situation du patient, ordonnances
-    ou protocoles rédigés clairement, indications précises pour la surveillance et
-    l'ajustement du traitement, compte-rendu à destination du médecin référent et/ou
-    de l'équipe soignante
+  expected_output: |
+    JSON structuré strictement conforme au schéma suivant:
+    {
+      "traitement_id": "string (UUID)",
+      "analyse_id": "string (UUID)",
+      "alert_id": "string (UUID)",
+      "timestamp": "ISO8601 datetime",
+      "medecin_specialiste": {
+        "nom": "string",
+        "specialite": "string (Cardiologue|Neurologue|Chirurgien|etc.)"
+      },
+      "diagnostic_retenu": {
+        "pathologie": "string",
+        "code_cim10": "string",
+        "gravite": "CRITIQUE|SEVERE|MODEREE|LEGERE"
+      },
+      "plan_traitement": {
+        "type": "MEDICAL|CHIRURGICAL|MIXTE",
+        "objectifs": ["string"],
+        "duree_estimee": "string"
+      },
+      "prescriptions": [
+        {
+          "medicament": "string",
+          "posologie": "string",
+          "voie": "IV|PO|IM|SC|etc.",
+          "duree": "string",
+          "surveillance": "string"
+        }
+      ],
+      "interventions": [
+        {
+          "type": "string (Chirurgie|Cathétérisme|Endoscopie|etc.)",
+          "urgence": "IMMEDIATE|PROGRAMMEE",
+          "delai_max": "string",
+          "preparation": ["string"]
+        }
+      ],
+      "examens_complementaires": [
+        {
+          "examen": "string",
+          "urgence": "STAT|URGENT|ROUTINE",
+          "justification": "string"
+        }
+      ],
+      "surveillance": {
+        "parametres": ["string"],
+        "frequence": "string",
+        "alertes": ["string (critères d'alerte)"]
+      },
+      "ajustements_possibles": [
+        {
+          "condition": "string",
+          "action": "string"
+        }
+      ],
+      "compte_rendu": {
+        "destinataires": ["Médecin référent", "Équipe soignante"],
+        "resume": "string",
+        "recommandations_suivi": "string"
+      }
+    }
   agent: agentmedecinspecialiste
   context:
   - analyse_medicale_d_urgence
+
+consolider_dossier_pour_ui:
+  description: >
+    Examiner les sorties de TOUTES les tâches précédentes.
+    Tu dois extraire les informations spécifiques pour l'affichage utilisateur.
+    
+    Récupère les données suivantes :
+    1. Patient: Nom, Age, Sexe, Symptômes (depuis creer_l_alerte).
+    2. Ambulance: ID, Nom, Type, ETA, Distance (depuis valider_la_demande_du_coordonnateur).
+    3. Hôpital: Nom, Adresse, Service, Distance (depuis valider_la_demande_du_coordonnateur et recevoir_les_patients).
+    4. Médical: Nom de l'urgentiste, Nom du spécialiste, Spécialité (depuis analyse_medicale_d_urgence et traitement_du_specialiste).
+    5. Statut Global: Condition du patient et niveau d'urgence.
+  expected_output: |
+    Un objet JSON UNIQUE et FINAL strictement conforme à ce format (sans texte autour):
+    {
+      "patient": {
+        "nom": "string",
+        "age": "integer",
+        "sexe": "string",
+        "symptomes": "string",
+        "condition": "string (ex: Stable, Critique)",
+        "niveau_urgence": "string"
+      },
+      "ambulance": {
+        "id": "string",
+        "nom": "string",
+        "type": "string",
+        "eta_minutes": "integer",
+        "distance_km": "float"
+      },
+      "hopital": {
+        "id": "string",
+        "nom": "string",
+        "adresse": "string",
+        "service": "string",
+        "distance_km": "float",
+        "eta_minutes": "integer",
+        "statut_acceptance": "CONFIRMED",
+        "equipe": {
+           "urgentiste": "string",
+           "specialiste_nom": "string",
+           "specialiste_titre": "string"
+        }
+      }
+    }
+  agent: agentadministratif
+  context:
+  - creer_l_alerte
+  - valider_la_demande_du_coordonnateur
+  - recevoir_les_patients
+  - analyse_medicale_d_urgence
+  - traitement_du_specialiste

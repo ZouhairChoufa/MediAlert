@@ -1,11 +1,13 @@
 import sys, os
+import json
+import re
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
-from flask import Flask, request, jsonify, render_template_string
+from flask import Flask, request, jsonify, render_template_string, send_file
 from patient_info_page import render_patient_info
+from medical_reports_page import render_medical_reports, generate_urgence_pdf, generate_specialiste_pdf
 from systeme_urgences_medicales.crew import SystemeUrgencesMedicalesCrew
 
 app = Flask(__name__)
-
 patients = []
 
 INDEX_HTML = """
@@ -56,7 +58,7 @@ INDEX_HTML = """
         margin-bottom: 8px;
         font-size: 14px;
       }
-      input, textarea {
+      input, textarea, select {
         width: 100%;
         padding: 12px;
         border: 2px solid #e0e0e0;
@@ -65,7 +67,7 @@ INDEX_HTML = """
         font-family: inherit;
         transition: border-color 0.3s;
       }
-      input:focus, textarea:focus {
+      input:focus, textarea:focus, select:focus {
         outline: none;
         border-color: #667eea;
       }
@@ -100,10 +102,6 @@ INDEX_HTML = """
       .response-card.show {
         display: block;
       }
-      .response-card.success {
-        background: #e8f5e9;
-        border-left: 5px solid #4caf50;
-      }
       .response-card.error {
         background: #ffebee;
         border-left: 5px solid #f44336;
@@ -113,9 +111,6 @@ INDEX_HTML = """
         margin-bottom: 10px;
         font-size: 16px;
       }
-      .response-card.success .response-title {
-        color: #2e7d32;
-      }
       .response-card.error .response-title {
         color: #c62828;
       }
@@ -124,9 +119,6 @@ INDEX_HTML = """
         line-height: 1.6;
         color: #333;
         word-wrap: break-word;
-      }
-      .response-card.success .response-text {
-        color: #1b5e20;
       }
       .response-card.error .response-text {
         color: #b71c1c;
@@ -243,189 +235,139 @@ def index():
 @app.route('/api/alert', methods=['POST'])
 def alert_api():
     payload = request.get_json() or {}
+    
+    # 1. Prepare Inputs
     inputs = {
         'symptomes': payload.get('symptomes', ''),
         'localisation': payload.get('localisation', ''),
-        'nom_prenom': payload.get('nom_prenom', ''),
-        'age': payload.get('age', ''),
-        'sexe': payload.get('sexe', ''),
-        'nv_urgence': payload.get('nv_urgence', ''),
-        'localisation_ambulance': payload.get('localisation_ambulance', ''),
-        'localisation_patient': payload.get('localisation_patient', '')
+        'nom_prenom': payload.get('nom_prenom', 'Inconnu'),
+        'age': payload.get('age', '30'),
+        'sexe': payload.get('sexe', 'Non spécifié'),
+        'nv_urgence': payload.get('nv_urgence', 'Non évalué'),
+        'localisation_ambulance': 'Centre Ville',
+        'localisation_patient': payload.get('localisation', '')
     }
 
     try:
+      # 2. Run Crew
       crew = SystemeUrgencesMedicalesCrew().crew()
       result = crew.kickoff(inputs=inputs)
-
-      def to_dict_safe(obj):
-        for method in ("to_dict", "dict", "toJSON", "json", "serialize", "to_serializable"):
-          fn = getattr(obj, method, None)
-          if callable(fn):
-            try:
-              return fn()
-            except Exception:
-              pass
-        if isinstance(obj, dict):
-          return obj
-        try:
-          return obj.__dict__
-        except Exception:
-          return {}
-
-      result_dict = to_dict_safe(result) or {}
       
-      result_text = str(result)
+      # 3. Extract JSON from Crew Output
+      final_output_str = str(result)
       
-      import re
+      print("\n=== DEBUG: CREW OUTPUT ===")
+      print(f"Result text (first 500 chars): {final_output_str[:500]}")
       
-      ambulance_id = 'AMB-' + str(len(patients) + 1).zfill(3)
-      ambulance_driver = 'Équipe disponible'
-      ambulance_eta = '15-20 min'
-      ambulance_localisation = inputs.get('localisation_ambulance') or 'Base centrale'
-      
-      # Try to extract from result text
-      if 'ambulance' in result_text.lower():
-          # Look for ambulance ID patterns
-          amb_match = re.search(r'ambulance[:\s]+([A-Z0-9-]+)', result_text, re.IGNORECASE)
-          if amb_match:
-              ambulance_id = amb_match.group(1)
-          
-          # Look for ETA patterns
-          eta_match = re.search(r'ETA[:\s]+(\d+[-\s]?\d*\s*min)', result_text, re.IGNORECASE)
-          if eta_match:
-              ambulance_eta = eta_match.group(1)
-          
-          # Look for driver/chauffeur
-          driver_match = re.search(r'(?:chauffeur|driver|équipe)[:\s]+([A-Za-zÀ-ÿ\s]+?)(?:\n|,|\.|\|)', result_text, re.IGNORECASE)
-          if driver_match:
-              ambulance_driver = driver_match.group(1).strip()
-      
-      # Parse hospital info from text
-      hospital_name = 'Hôpital d\'urgence le plus proche'
-      hospital_address = 'En cours de détermination'
-      hospital_status = 'En attente de confirmation'
-      
-      if 'hôpital' in result_text.lower() or 'hopital' in result_text.lower():
-          # Look for hospital name
-          hosp_match = re.search(r'(?:hôpital|hopital)[:\s]+([A-Za-zÀ-ÿ\s\'-]+?)(?:\n|,|\.|;)', result_text, re.IGNORECASE)
-          if hosp_match:
-              hospital_name = hosp_match.group(1).strip()
-          
-          # Look for address
-          addr_match = re.search(r'(?:adresse|address)[:\s]+([^,\n]+)', result_text, re.IGNORECASE)
-          if addr_match:
-              hospital_address = addr_match.group(1).strip()
-          
-          # Look for status
-          if 'accepté' in result_text.lower() or 'confirmé' in result_text.lower():
-              hospital_status = 'Accepté'
-          elif 'disponible' in result_text.lower():
-              hospital_status = 'Disponible'
-
-      # Build patient entry from submitted fields and attach any found ambulance/hospital info
+      data = {}
       try:
-        new_id = max([p.get('id', 0) for p in patients]) + 1 if patients else 1
-      except Exception:
-        new_id = len(patients) + 1
+          # Clean up markdown code blocks if present
+          json_match = re.search(r'\{.*\}', final_output_str, re.DOTALL)
+          if json_match:
+              data = json.loads(json_match.group(0))
+              print(f"Parsed JSON keys: {data.keys()}")
+          else:
+              print("DEBUG: Could not find JSON brackets, attempting raw load")
+              data = json.loads(final_output_str)
+      except Exception as e:
+          print(f"JSON Parsing Error: {e}")
+          print(f"Raw Output: {final_output_str}")
+
+      # 4. Map Data to Patient Info Page Structure
+      p_data = data.get('patient', {})
+      a_data = data.get('ambulance', {})
+      h_data = data.get('hopital', {})
+      h_team = h_data.get('equipe', {})
+
+      # Generate a new ID
+      new_id = len(patients) + 1
 
       patient_entry = {
         'id': new_id,
-        'name': inputs.get('nom_prenom') or f'Patient {new_id}',
-        'age': inputs.get('age') or '',
-        'sexe': inputs.get('sexe') or '',
-        'symptomes': inputs.get('symptomes') or '',
-        'localisation': inputs.get('localisation') or '',
-        'condition': 'Évaluation en cours',
+        'name': p_data.get('nom', inputs.get('nom_prenom')),
+        'age': p_data.get('age', inputs.get('age')),
+        'sexe': p_data.get('sexe', inputs.get('sexe')),
+        'symptomes': p_data.get('symptomes', inputs.get('symptomes')),
+        'localisation': inputs.get('localisation'),
+        'condition': p_data.get('condition', 'En cours d\'évaluation'),
+        'niveau_urgence': p_data.get('niveau_urgence', 'URGENT'),
+        
         'ambulance': {
-            'id': ambulance_id,
-            'driver': ambulance_driver,
-            'eta': ambulance_eta,
-            'localisation': ambulance_localisation
+            'id': a_data.get('id', 'N/A'),
+            'nom': a_data.get('nom', 'Recherche en cours...'),
+            'type': a_data.get('type', 'Ambulance'),
+            'eta': f"{a_data.get('eta_minutes', 'Unknown')} min",
+            'distance_km': a_data.get('distance_km', 0)
         },
+        
         'hospital': {
-            'name': hospital_name,
-            'address': hospital_address,
-            'acceptance_status': hospital_status
+            'id': h_data.get('id', 'N/A'),
+            'name': h_data.get('nom', 'Hôpital le plus proche'),
+            'address': h_data.get('adresse', 'Adresse non fournie'),
+            'service': h_data.get('service', 'Urgences'),
+            'distance_km': h_data.get('distance_km', 0),
+            'eta': f"{h_data.get('eta_minutes', 'Unknown')} min",
+            'acceptance_status': h_data.get('statut_acceptance', 'En attente'),
+            'urgentiste': h_team.get('urgentiste', 'De garde'),
+            'specialiste': {
+                'nom': h_team.get('specialiste_nom', 'N/A'),
+                'specialite': h_team.get('specialiste_titre', 'N/A')
+            }
         }
       }
 
-      # Append to in-memory patients list (demo persistence)
       patients.append(patient_entry)
       
-      # Print to console for debugging
       print("\n" + "="*50)
       print("PATIENT ENREGISTRÉ:")
       print(f"ID: {patient_entry['id']}")
       print(f"Nom: {patient_entry['name']}")
-      print(f"Ambulance: {patient_entry['ambulance']['id']} - {patient_entry['ambulance']['driver']}")
+      print(f"Ambulance: {patient_entry['ambulance']['id']} - {patient_entry['ambulance']['nom']}")
       print(f"Hôpital: {patient_entry['hospital']['name']}")
       print("="*50 + "\n")
+      
+      return jsonify({"status": "ok", "text": "Alerte traitée avec succès."})
 
-      # Extract a primary textual field from the CrewOutput for display
-      def extract_text(obj):
-        # Try common conversion methods first
-        for method in ("to_dict", "dict", "toJSON", "json", "serialize", "to_serializable"):
-          fn = getattr(obj, method, None)
-          if callable(fn):
-            try:
-              obj = fn()
-              break
-            except Exception:
-              pass
-
-        # If it's a dict-like, look for common text fields
-        def find_text(d):
-          if d is None:
-            return None
-          if isinstance(d, str):
-            return d
-          if isinstance(d, list):
-            # join list of strings or try first element recursively
-            for item in d:
-              t = find_text(item)
-              if t:
-                return t
-            return None
-          if isinstance(d, dict):
-            for key in ("message", "text", "content", "output", "result", "answer", "body"):
-              if key in d and d[key] is not None:
-                t = find_text(d[key])
-                if t:
-                  return t
-            # handle choices array (OpenAI style)
-            if "choices" in d and isinstance(d["choices"], list) and len(d["choices"])>0:
-              return find_text(d["choices"][0])
-            # fallback: look at any string-valued item
-            for v in d.values():
-              t = find_text(v)
-              if t:
-                return t
-          # fallback to string conversion
-          try:
-            return str(d)
-          except Exception:
-            return None
-
-        # If obj has __dict__ and wasn't converted, try that
-        if not isinstance(obj, (dict, list, str)):
-          try:
-            obj = obj.__dict__
-          except Exception:
-            pass
-
-        text = find_text(obj)
-        return text or "(no textual content)"
-
-      text = extract_text(result)
-      return jsonify({"status": "ok", "text": text})
     except Exception as e:
+        print(f"Server Error: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
 @app.route('/patient_info')
 def patient_info():
     return render_patient_info(patients)
+
+@app.route('/medical_reports')
+def medical_reports():
+    return render_medical_reports(patients)
+
+@app.route('/download_report/<int:patient_id>/<report_type>')
+def download_report(patient_id, report_type):
+    patient = next((p for p in patients if p['id'] == patient_id), None)
+    if not patient:
+        return jsonify({"status": "error", "message": "Patient not found"}), 404
+    
+    if report_type == 'urgence':
+        analyse_urgence = {
+            'medecin': patient['hospital'].get('urgentiste', 'Dr. Urgence'),
+            'diagnostic': f"Niveau d'urgence: {patient.get('niveau_urgence', 'N/A')}",
+            'recommandations': f"Symptômes: {patient.get('symptomes', 'N/A')}"
+        }
+        pdf_buffer = generate_urgence_pdf(patient, analyse_urgence)
+        return send_file(pdf_buffer, as_attachment=True, download_name=f"analyse_urgence_{patient['name']}.pdf", mimetype='application/pdf')
+    
+    elif report_type == 'specialiste':
+        traitement_specialiste = {
+            'specialiste_nom': patient['hospital']['specialiste'].get('nom', 'N/A'),
+            'specialiste_titre': patient['hospital']['specialiste'].get('specialite', 'N/A'),
+            'diagnostic': f"Condition: {patient.get('condition', 'En cours')}",
+            'plan_traitement': f"Service: {patient['hospital'].get('service', 'Urgences')}",
+            'prescriptions': 'Selon protocole établi'
+        }
+        pdf_buffer = generate_specialiste_pdf(patient, traitement_specialiste)
+        return send_file(pdf_buffer, as_attachment=True, download_name=f"traitement_specialiste_{patient['name']}.pdf", mimetype='application/pdf')
+    
+    return jsonify({"status": "error", "message": "Invalid report type"}), 400
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
